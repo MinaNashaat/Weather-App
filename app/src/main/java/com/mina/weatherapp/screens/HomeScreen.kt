@@ -1,5 +1,6 @@
 package com.mina.weatherapp.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -8,14 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,19 +26,15 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -49,39 +43,36 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.material3.lightColorScheme
+import com.mina.weatherapp.R
+import com.mina.weatherapp.data.weather.model.home.forecast.ForecastResponse
+import com.mina.weatherapp.data.weather.model.home.onecall.OneCallResponse
+import com.mina.weatherapp.presentation.home.HomeUiState
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val Primary = Color(0xFF2BADEE)
 private val BackgroundLight = Color(0xFFF6F7F8)
 private val CardLight = Color.White
 
-//@Preview(showBackground = true, widthDp = 411, heightDp = 891)
-//@Composable
-//fun WeatherForecastScreenPreview() {
-//    MaterialTheme(colorScheme = lightColorScheme()) {
-//        WeatherForecastScreen()
-//    }
-//}
-
 private data class InfoCardUi(
     val title: String,
     val value: String,
-    val icon: ImageVector
+    val icon: Int
 )
 
-private data class HourlyUi(
+data class HourlyUi(
     val time: String,
     val temp: String,
     val icon: ImageVector,
     val highlighted: Boolean = false
 )
 
-private data class DailyUi(
+data class DailyUi(
     val day: String,
     val max: String,
     val min: String,
@@ -90,122 +81,93 @@ private data class DailyUi(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WeatherForecastScreen(modifier: Modifier = Modifier) {
+fun WeatherForecastScreen(uiState: HomeUiState, modifier: Modifier = Modifier) {
     val bg = BackgroundLight
     val cardBg = CardLight
 
-    val hourly = remember {
-        listOf(
-            HourlyUi("12 PM", "26°", Icons.Filled.Home, highlighted = true),
-            HourlyUi("1 PM", "27°", Icons.Filled.Home),
-            HourlyUi("2 PM", "28°", Icons.Filled.Home),
-            HourlyUi("3 PM", "27°", Icons.Filled.Home),
-            HourlyUi("4 PM", "25°", Icons.Filled.Home)
-        )
-    }
+    when(uiState){
+        is HomeUiState.Loading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
 
-    val daily = remember {
-        listOf(
-            DailyUi("Monday", "26°", "18°", Icons.Filled.Home),
-            DailyUi("Tuesday", "28°", "19°", Icons.Filled.Home),
-            DailyUi("Wednesday", "25°", "17°", Icons.Filled.Home),
-            DailyUi("Thursday", "21°", "15°", Icons.Filled.Home),
-            DailyUi("Friday", "23°", "16°", Icons.Filled.Home)
-        )
-    }
+        is HomeUiState.Success -> {
+            val homeData = uiState.data
+            val hourly = mapHourlyUi(homeData.oneCallResponse)
+            val daily = mapDailyUi(homeData.forecastResponse)
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = bg,
-        contentWindowInsets = WindowInsets.statusBars,
-        topBar = {
-            CenterAlignedTopAppBar(
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = bg.copy(alpha = 0.92f)
-                ),
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Primary.copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Home,
-                                contentDescription = null,
-                                tint = Primary
-                            )
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            text = "Weather Forecast",
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = Color(0xFF0F172A)
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = bg,
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = { Text("Weather Forecast") }
+                    )
+                }
+            ) { padding ->
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    item {
+                        HeroSection(
+                            temperature = "${homeData.oneCallResponse.current.temp.toInt()}°",
+                            status = homeData.oneCallResponse.current.weather.firstOrNull()?.description ?: "",
+                            location = "Current Location",
+                            dateTime = Date(uiState.data.oneCallResponse.current.dt * 1000).toString()
                         )
                     }
-                },
-                actions = {
-                    IconButton(onClick = {}) { Icon(Icons.Filled.Search, contentDescription = "Search") }
-                    IconButton(onClick = {}) { Icon(Icons.Filled.Refresh, contentDescription = "Refresh") }
-                    IconButton(onClick = {}) { Icon(Icons.Filled.LocationOn, contentDescription = "My location", tint = Primary) }
+
+                    item {
+                        InfoGrid(
+                            items = listOf(
+                                InfoCardUi("Humidity", "${homeData.oneCallResponse.current.humidity}%", R.drawable.humidity),
+                                InfoCardUi("Wind", "${homeData.oneCallResponse.current.wind_speed}", R.drawable.wind),
+                                InfoCardUi("Pressure", "${homeData.oneCallResponse.current.pressure}", R.drawable.pressure),
+                                InfoCardUi("Clouds", "${homeData.oneCallResponse.current.clouds}%", R.drawable.clouds)
+                            ),
+                            cardBg = cardBg
+                        )
+                    }
+
+                    item {
+                        SectionTitle("Hourly Forecast")
+                    }
+
+                    item {
+                        HourlyRow(items = hourly, cardBg = cardBg)
+                    }
+
+                    item {
+                        SectionTitle("5-Day Forecast")
+                    }
+
+                    item {
+                        DailyList(items = daily, cardBg = cardBg)
+                    }
                 }
-            )
-            HorizontalDivider(color = Primary.copy(alpha = 0.10f))
+            }
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding(),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                HeroSection(
-                    temperature = "26°",
-                    status = "Clear Sky",
-                    location = "London, UK",
-                    dateTime = "Monday, 12:00 PM"
-                )
-            }
 
-            item {
-                InfoGrid(
-                    items = listOf(
-                        InfoCardUi("Humidity", "45%", Icons.Filled.Notifications),
-                        InfoCardUi("Wind", "12km/h", Icons.Filled.Refresh),
-                        InfoCardUi("Pressure", "1012hPa", Icons.Filled.Settings),
-                        InfoCardUi("Clouds", "10%", Icons.Filled.Favorite)
-                    ),
-                    cardBg = cardBg
-                )
-            }
-
-            item {
-                SectionTitle(title = "Hourly Forecast")
-                HourlyRow(items = hourly, cardBg = cardBg)
-            }
-
-            item {
-                SectionTitle(title = "5-Day Forecast")
-                DailyList(items = daily, cardBg = cardBg)
-                Spacer(Modifier.height(18.dp))
+        is HomeUiState.Error -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = uiState.message)
             }
         }
     }
 }
 
 @Composable
-private fun HeroSection(
-    temperature: String,
-    status: String,
-    location: String,
-    dateTime: String
-) {
+private fun HeroSection(temperature: String, status: String, location: String, dateTime: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,10 +247,7 @@ private fun HeroSection(
 }
 
 @Composable
-private fun InfoGrid(
-    items: List<InfoCardUi>,
-    cardBg: Color
-) {
+private fun InfoGrid(items: List<InfoCardUi>, cardBg: Color) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -320,11 +279,7 @@ private fun InfoGrid(
 }
 
 @Composable
-private fun InfoCard(
-    item: InfoCardUi,
-    cardBg: Color,
-    modifier: Modifier = Modifier
-) {
+private fun InfoCard(item: InfoCardUi, cardBg: Color, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -345,7 +300,12 @@ private fun InfoCard(
                     .background(Primary.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(item.icon, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                Icon(
+                    painter = painterResource(id = item.icon),
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             Column {
@@ -378,10 +338,7 @@ private fun SectionTitle(title: String) {
 }
 
 @Composable
-private fun HourlyRow(
-    items: List<HourlyUi>,
-    cardBg: Color
-) {
+private fun HourlyRow(items: List<HourlyUi>, cardBg: Color) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -394,10 +351,7 @@ private fun HourlyRow(
 }
 
 @Composable
-private fun HourCard(
-    item: HourlyUi,
-    cardBg: Color
-) {
+private fun HourCard(item: HourlyUi, cardBg: Color) {
     val container = if (item.highlighted) Primary else cardBg
     val textColor = if (item.highlighted) Color.White else Color(0xFF0F172A)
     val subColor = if (item.highlighted) Color.White.copy(alpha = 0.9f) else Color(0xFF64748B)
@@ -424,10 +378,7 @@ private fun HourCard(
 }
 
 @Composable
-private fun DailyList(
-    items: List<DailyUi>,
-    cardBg: Color
-) {
+private fun DailyList(items: List<DailyUi>, cardBg: Color) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -441,10 +392,7 @@ private fun DailyList(
 }
 
 @Composable
-private fun DailyRow(
-    item: DailyUi,
-    cardBg: Color
-) {
+private fun DailyRow(item: DailyUi, cardBg: Color) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardBg),
@@ -477,4 +425,42 @@ private fun DailyRow(
             }
         }
     }
+}
+
+fun mapHourlyUi(oneCallResponse: OneCallResponse): List<HourlyUi> {
+    return oneCallResponse.hourly.take(24).mapIndexed { index, item ->
+        HourlyUi(
+            time = SimpleDateFormat("hh a", Locale.getDefault())
+                .format(Date(item.dt * 1000)),
+            temp = "${item.temp.toInt()}°",
+            icon = Icons.Filled.Home,
+            highlighted = index == 0
+        )
+    }
+}
+
+fun mapDailyUi(forecastResponse: ForecastResponse): List<DailyUi> {
+    return forecastResponse.list
+        .groupBy { it.dt_txt.substring(0, 10) }
+        .entries
+        .take(5)
+        .map { entry ->
+            val items = entry.value
+            val maxTemp = items.maxOf { it.main.temp }
+            val minTemp = items.minOf { it.main.temp }
+
+            val dayName = try {
+                val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(entry.key)
+                SimpleDateFormat("EEEE", Locale.getDefault()).format(date!!)
+            } catch (e: Exception) {
+                entry.key
+            }
+
+            DailyUi(
+                day = dayName,
+                max = "${maxTemp.toInt()}°",
+                min = "${minTemp.toInt()}°",
+                icon = Icons.Filled.Home
+            )
+        }
 }

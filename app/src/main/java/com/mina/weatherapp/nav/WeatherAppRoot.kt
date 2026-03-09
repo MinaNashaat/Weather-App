@@ -2,6 +2,7 @@ package com.mina.weatherapp.nav
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -19,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.mina.weatherapp.presentation.home.HomeUiState
 import com.mina.weatherapp.screens.AddAlertScreen
 import com.mina.weatherapp.screens.AddLocationScreen
 import com.mina.weatherapp.screens.AlertsScreen
@@ -28,7 +30,7 @@ import com.mina.weatherapp.screens.SettingsScreen
 import com.mina.weatherapp.screens.WeatherForecastScreen
 
 @Composable
-fun WeatherAppRoot() {
+fun WeatherAppRoot(uiState : HomeUiState, modifier: Modifier) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentDestination = backStack?.destination
@@ -91,10 +93,10 @@ fun WeatherAppRoot() {
         NavHost(
             navController = navController,
             startDestination = Screens.Home,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.fillMaxSize().padding(padding)
         ) {
             composable<Screens.Home> {
-                WeatherForecastScreen()
+                WeatherForecastScreen(uiState)
             }
 
             composable<Screens.Favorites> {
