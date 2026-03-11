@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
     kotlin("plugin.serialization") version "2.1.10"
 }
 
@@ -64,4 +65,12 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    val room_version = "2.8.4"
+    implementation("androidx.room:room-ktx:${room_version}")
+    implementation("androidx.room:room-runtime:$room_version")
+//    annotationProcessor("androidx.room:room-compiler:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
+
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 }

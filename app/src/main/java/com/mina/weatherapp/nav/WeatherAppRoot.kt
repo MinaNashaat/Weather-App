@@ -5,33 +5,57 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.mina.weatherapp.data.db.WeatherDatabase
+import com.mina.weatherapp.data.weather.WeatherRepository
+import com.mina.weatherapp.data.weather.datasource.local.FavoritesLocalDataSource
+import com.mina.weatherapp.data.weather.datasource.remote.WeatherRemoteDataSource
+import com.mina.weatherapp.presentation.favourites.favouritesdetails.FavoriteDetailsScreen
+import com.mina.weatherapp.presentation.favourites.addfavouritelocation.AddFavoriteViewModel
+import com.mina.weatherapp.presentation.favourites.addfavouritelocation.AddFavoriteViewModelFactory
+import com.mina.weatherapp.presentation.favourites.favouritesdetails.FavoriteDetailsViewModel
+import com.mina.weatherapp.presentation.favourites.favouritesdetails.FavoriteDetailsViewModelFactory
+import com.mina.weatherapp.presentation.favourites.addfavouritelocation.AddLocationScreen
+import com.mina.weatherapp.presentation.favourites.favouriteslocations.FavoritesScreen
+import com.mina.weatherapp.presentation.favourites.favouriteslocations.FavoritesViewModel
+import com.mina.weatherapp.presentation.favourites.favouriteslocations.FavoritesViewModelFactory
 import com.mina.weatherapp.presentation.home.HomeUiState
-import com.mina.weatherapp.screens.AddAlertScreen
-import com.mina.weatherapp.screens.AddLocationScreen
-import com.mina.weatherapp.screens.AlertsScreen
-import com.mina.weatherapp.screens.FavoritesScreen
-import com.mina.weatherapp.screens.Screens
-import com.mina.weatherapp.screens.SettingsScreen
-import com.mina.weatherapp.screens.WeatherForecastScreen
+import com.mina.weatherapp.screens.*
 
 @Composable
-fun WeatherAppRoot(uiState : HomeUiState, modifier: Modifier) {
+fun WeatherAppRoot(uiState: HomeUiState, modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+    val context = LocalContext.current.applicationContext
+
+    val repository = remember {
+        val database = WeatherDatabase.getInstance(context)
+        val localDataSource = FavoritesLocalDataSource(database.favoriteLocationDao())
+        val remoteDataSource = WeatherRemoteDataSource()
+        WeatherRepository(remoteDataSource, localDataSource)
+    }
+
+    val favoritesFactory = remember { FavoritesViewModelFactory(repository) }
+    val addFavoriteFactory = remember { AddFavoriteViewModelFactory(repository) }
+    val favoriteDetailsFactory = remember { FavoriteDetailsViewModelFactory(repository) }
+
+    val favoritesViewModel: FavoritesViewModel = viewModel(factory = favoritesFactory)
+    val addFavoriteViewModel: AddFavoriteViewModel = viewModel(factory = addFavoriteFactory)
+    val favoriteDetailsViewModel: FavoriteDetailsViewModel = viewModel(factory = favoriteDetailsFactory)
+
+    val favoritesUiState by favoritesViewModel.uiState.collectAsState()
+    val addFavoriteUiState by addFavoriteViewModel.uiState.collectAsState()
+    val favoriteDetailsUiState by favoriteDetailsViewModel.uiState.collectAsState()
+
     val backStack by navController.currentBackStackEntryAsState()
     val currentDestination = backStack?.destination
 
@@ -57,6 +81,7 @@ fun WeatherAppRoot(uiState : HomeUiState, modifier: Modifier) {
     }
 
     Scaffold(
+        modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.navigationBars,
         bottomBar = {
@@ -93,7 +118,9 @@ fun WeatherAppRoot(uiState : HomeUiState, modifier: Modifier) {
         NavHost(
             navController = navController,
             startDestination = Screens.Home,
-            modifier = Modifier.fillMaxSize().padding(padding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
             composable<Screens.Home> {
                 WeatherForecastScreen(uiState)
@@ -101,25 +128,46 @@ fun WeatherAppRoot(uiState : HomeUiState, modifier: Modifier) {
 
             composable<Screens.Favorites> {
                 FavoritesScreen(
-                    onBack = { navController.navigate(Screens.Home) { launchSingleTop = true } },
-                    onAddLocation = { navController.navigate(Screens.AddLocation) { launchSingleTop = true } }
+                    uiState = favoritesUiState,
+                    onAddLocation = {
+                        addFavoriteViewModel.resetScreen()
+                        navController.navigate(Screens.AddLocation)
+                    },
+                    onItemClick = { lat, lon ->
+                        favoriteDetailsViewModel.loadFavoriteWeather(lat, lon)
+                        navController.navigate(Screens.FavoriteDetails(lat, lon))
+                    },
+                    onDeleteClick = { favoritesViewModel.deleteFavorite(it) }
                 )
-            }
-
-            composable<Screens.Alerts> {
-                AlertsScreen(
-                    onAddAlert = { navController.navigate(Screens.AddAlert) { launchSingleTop = true } }
-                )
-            }
-
-            composable<Screens.Settings> {
-                SettingsScreen(onBack = { navController.navigate(Screens.Home) { launchSingleTop = true } })
             }
 
             composable<Screens.AddLocation> {
                 AddLocationScreen(
+                    uiState = addFavoriteUiState,
+                    selectedLocation = addFavoriteViewModel.selectedLocation.collectAsState().value,
                     onBack = { navController.popBackStack() },
-                    onSave = { navController.popBackStack() }
+                    onLocationSelected = { lat, lon ->
+                        addFavoriteViewModel.setSelectedLocation(lat, lon)
+                    },
+                    onSave = { cityName ->
+                        addFavoriteViewModel.saveFavorite(cityName)
+                    }
+                )
+            }
+
+            composable<Screens.FavoriteDetails> {
+                FavoriteDetailsScreen(uiState = favoriteDetailsUiState)
+            }
+
+            composable<Screens.Alerts> {
+                AlertsScreen(
+                    onAddAlert = { navController.navigate(Screens.AddAlert) }
+                )
+            }
+
+            composable<Screens.Settings> {
+                SettingsScreen(
+                    onBack = { navController.navigate(Screens.Home) { launchSingleTop = true } }
                 )
             }
 

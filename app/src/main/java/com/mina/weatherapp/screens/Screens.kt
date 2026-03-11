@@ -20,4 +20,7 @@ sealed class Screens {
 
     @Serializable
     data object AddAlert : Screens()
+
+    @Serializable
+    data class FavoriteDetails(val latitude: Double, val longitude: Double) : Screens()
 }

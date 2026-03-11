@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -28,13 +29,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.room.Room
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.mina.weatherapp.data.db.WeatherDatabase
 import com.mina.weatherapp.data.weather.WeatherRepository
+import com.mina.weatherapp.data.weather.datasource.local.FavoritesLocalDataSource
+import com.mina.weatherapp.data.weather.datasource.remote.WeatherRemoteDataSource
 import com.mina.weatherapp.nav.WeatherAppRoot
 import com.mina.weatherapp.presentation.home.HomeViewModel
 import com.mina.weatherapp.presentation.home.WeatherViewModelFactory
@@ -44,13 +49,18 @@ import com.mina.weatherapp.utils.Constants
 const val LOCATION_PERMISSION = 27
 class MainActivity : ComponentActivity() {
     private lateinit var locationState: MutableState<Location>
-    private lateinit var viewModel : HomeViewModel
+    private val viewModel: HomeViewModel by viewModels {
+        val database = WeatherDatabase.getInstance(application)
+        val favoriteLocationDao = database.favoriteLocationDao()
+        val localDataSource = FavoritesLocalDataSource(favoriteLocationDao)
+        val remoteDataSource = WeatherRemoteDataSource()
+        val repository = WeatherRepository(remoteDataSource, localDataSource)
+        WeatherViewModelFactory(repository)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val factory = WeatherViewModelFactory(WeatherRepository())
-        viewModel = ViewModelProvider(this, factory).get(HomeViewModel::class.java)
 
         setContent {
             val uiState = viewModel.uiState.collectAsState().value

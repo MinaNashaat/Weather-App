@@ -12,6 +12,7 @@ foundationLayout = "1.10.3"
 navigationRuntimeKtx = "2.9.7"
 navigationCompose = "2.8.8"
 runtime = "1.10.3"
+ksp = "2.0.21-1.0.25"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,4 +38,4 @@ navArgs = {group = "org.jetbrains.kotlinx" , name ="kotlinx-serialization-json" 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

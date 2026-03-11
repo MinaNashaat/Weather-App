@@ -1,20 +1,26 @@
 package com.mina.weatherapp.data.weather
 
-import android.util.Log
+import com.mina.weatherapp.data.weather.datasource.local.entity.FavoriteLocationEntity
+import com.mina.weatherapp.data.weather.datasource.local.FavoritesLocalDataSource
 import com.mina.weatherapp.data.weather.datasource.remote.WeatherRemoteDataSource
 import com.mina.weatherapp.data.weather.model.home.HomeWeatherResponse
 import com.mina.weatherapp.data.weather.model.home.forecast.ForecastResponse
 import com.mina.weatherapp.data.weather.model.home.onecall.OneCallResponse
 import com.mina.weatherapp.presentation.home.HomeUiState
 import com.mina.weatherapp.utils.Constants
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class WeatherRepository {
+class WeatherRepository(
+    private val weatherRemoteDataSource: WeatherRemoteDataSource,
+    private val weatherLocalDataSource: FavoritesLocalDataSource,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) {
 
-    private val weatherRemoteDataSource = WeatherRemoteDataSource()
 
     fun getHomeWeather(
         lat: Double,
@@ -67,4 +73,21 @@ class WeatherRepository {
             emit(HomeUiState.Error(e.message ?: "Unknown error"))
         }
     }
+
+    fun getAllFavoriteLocations(): Flow<List<FavoriteLocationEntity>> {
+        return weatherLocalDataSource.getAllFavoriteLocations()
+    }
+
+    suspend fun insertFavoriteLocation(location: FavoriteLocationEntity): Long {
+        return weatherLocalDataSource.insertFavoriteLocation(location)
+    }
+
+    suspend fun deleteFavoriteLocation(location: FavoriteLocationEntity) {
+        weatherLocalDataSource.deleteFavoriteLocation(location)
+    }
+
+    suspend fun getFavoriteByCoordinates(lat: Double, lon: Double): FavoriteLocationEntity? {
+        return weatherLocalDataSource.getFavoriteByCoordinates(lat, lon)
+    }
+
 }
