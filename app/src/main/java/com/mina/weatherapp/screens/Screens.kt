@@ -23,4 +23,7 @@ sealed class Screens {
 
     @Serializable
     data class FavoriteDetails(val latitude: Double, val longitude: Double) : Screens()
+
+    @Serializable
+    data object PickHomeLocation : Screens()
 }

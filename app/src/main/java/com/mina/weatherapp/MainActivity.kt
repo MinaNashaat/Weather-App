@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
-import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -15,47 +14,31 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.room.Room
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.mina.weatherapp.data.db.WeatherDatabase
-import com.mina.weatherapp.data.weather.WeatherRepository
-import com.mina.weatherapp.data.weather.datasource.local.FavoritesLocalDataSource
-import com.mina.weatherapp.data.weather.datasource.remote.WeatherRemoteDataSource
+import com.mina.weatherapp.data.settings.model.LocationSource
 import com.mina.weatherapp.nav.WeatherAppRoot
 import com.mina.weatherapp.presentation.home.HomeViewModel
 import com.mina.weatherapp.presentation.home.WeatherViewModelFactory
-import com.mina.weatherapp.ui.theme.WeatherAppTheme
-import com.mina.weatherapp.utils.Constants
 
 const val LOCATION_PERMISSION = 27
 class MainActivity : ComponentActivity() {
     private lateinit var locationState: MutableState<Location>
+
     private val viewModel: HomeViewModel by viewModels {
-        val database = WeatherDatabase.getInstance(application)
-        val favoriteLocationDao = database.favoriteLocationDao()
-        val localDataSource = FavoritesLocalDataSource(favoriteLocationDao)
-        val remoteDataSource = WeatherRemoteDataSource()
-        val repository = WeatherRepository(remoteDataSource, localDataSource)
-        WeatherViewModelFactory(repository)
+        val container = (application as WeatherApp).appContainer
+        WeatherViewModelFactory(
+            weatherRepository = container.weatherRepository,
+            settingsRepository = container.settingsRepository
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,13 +51,25 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = lightColorScheme()) {
 //                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     locationState = rememberSaveable{ mutableStateOf(Location("")) }
-                    WeatherAppRoot(uiState, Modifier.fillMaxSize())
+                    WeatherAppRoot(uiState, viewModel, Modifier.fillMaxSize())
 //                }
             }
         }
     }
     override fun onStart() {
         super.onStart()
+
+        val source = (application as WeatherApp)
+            .appContainer
+            .settingsRepository
+            .settings
+            .value
+            .locationSource
+
+        if (source == LocationSource.MAP) {
+            viewModel.refresh()
+            return
+        }
 
         if(checkPermission()){
             if(isLocationEnabled()){
@@ -130,11 +125,7 @@ class MainActivity : ComponentActivity() {
             null
         ).addOnSuccessListener { location ->
             if (location != null) {
-                viewModel.getHomeWeather(
-                    lat = location.latitude,
-                    lon = location.longitude,
-                    appid = Constants.API_KEY
-                )
+                viewModel.updateGpsLocation(location.latitude, location.longitude)
             }
         }
     }

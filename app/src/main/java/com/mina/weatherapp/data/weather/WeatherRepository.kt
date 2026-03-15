@@ -1,5 +1,6 @@
 package com.mina.weatherapp.data.weather
 
+import com.mina.weatherapp.data.settings.SettingsRepository
 import com.mina.weatherapp.data.weather.datasource.local.entity.FavoriteLocationEntity
 import com.mina.weatherapp.data.weather.datasource.local.FavoritesLocalDataSource
 import com.mina.weatherapp.data.weather.datasource.remote.WeatherRemoteDataSource
@@ -18,21 +19,26 @@ import kotlinx.coroutines.flow.flow
 class WeatherRepository(
     private val weatherRemoteDataSource: WeatherRemoteDataSource,
     private val weatherLocalDataSource: FavoritesLocalDataSource,
+    private val settingsRepository: SettingsRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
-
 
     fun getHomeWeather(
         lat: Double,
         lon: Double,
-        appid: String,
-        units: String = Constants.UNITS_METRIC,
-        lang: String = Constants.ENGLISH_LANGUAGE
+        appid: String
     ): Flow<HomeUiState> = flow {
+
         emit(HomeUiState.Loading)
 
+        val prefs = settingsRepository.settings.value
+        val units = prefs.units
+        val lang = prefs.language
+
         try {
+
             val result = coroutineScope {
+
                 val oneCallDeferred = async {
                     weatherRemoteDataSource.getOneCallWeather(lat, lon, appid, units, lang)
                 }
@@ -45,18 +51,19 @@ class WeatherRepository(
                 val forecastResult = forecastDeferred.await()
 
                 if (oneCallResult.isSuccess && forecastResult.isSuccess) {
-                    lateinit var oneCallResponse : OneCallResponse
-                    lateinit var forecastResponse : ForecastResponse
-                    oneCallResult.onSuccess {
-                        oneCallResponse = it
-                    }
-                    forecastResult.onSuccess {
-                        forecastResponse = it
-                    }
-                    Result.success(HomeWeatherResponse(oneCallResponse, forecastResponse)
+
+                    lateinit var oneCallResponse: OneCallResponse
+                    lateinit var forecastResponse: ForecastResponse
+
+                    oneCallResult.onSuccess { oneCallResponse = it }
+                    forecastResult.onSuccess { forecastResponse = it }
+
+                    Result.success(
+                        HomeWeatherResponse(oneCallResponse, forecastResponse)
                     )
+
                 } else {
-                    oneCallResult.onFailure {  }
+
                     Result.failure(
                         oneCallResult.exceptionOrNull()
                             ?: forecastResult.exceptionOrNull()

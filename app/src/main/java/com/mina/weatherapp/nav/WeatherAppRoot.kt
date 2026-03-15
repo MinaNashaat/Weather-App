@@ -16,10 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.mina.weatherapp.data.db.WeatherDatabase
-import com.mina.weatherapp.data.weather.WeatherRepository
-import com.mina.weatherapp.data.weather.datasource.local.FavoritesLocalDataSource
-import com.mina.weatherapp.data.weather.datasource.remote.WeatherRemoteDataSource
+import com.mina.weatherapp.WeatherApp
 import com.mina.weatherapp.presentation.favourites.favouritesdetails.FavoriteDetailsScreen
 import com.mina.weatherapp.presentation.favourites.addfavouritelocation.AddFavoriteViewModel
 import com.mina.weatherapp.presentation.favourites.addfavouritelocation.AddFavoriteViewModelFactory
@@ -30,27 +27,36 @@ import com.mina.weatherapp.presentation.favourites.favouriteslocations.Favorites
 import com.mina.weatherapp.presentation.favourites.favouriteslocations.FavoritesViewModel
 import com.mina.weatherapp.presentation.favourites.favouriteslocations.FavoritesViewModelFactory
 import com.mina.weatherapp.presentation.home.HomeUiState
+import com.mina.weatherapp.presentation.home.HomeViewModel
+import com.mina.weatherapp.presentation.settings.PickHomeLocationScreen
+import com.mina.weatherapp.presentation.settings.SettingsScreen
+import com.mina.weatherapp.presentation.settings.SettingsViewModel
+import com.mina.weatherapp.presentation.settings.SettingsViewModelFactory
 import com.mina.weatherapp.screens.*
 
 @Composable
-fun WeatherAppRoot(uiState: HomeUiState, modifier: Modifier = Modifier) {
-    val navController = rememberNavController()
-    val context = LocalContext.current.applicationContext
+fun WeatherAppRoot(
+    uiState: HomeUiState,
+    homeViewModel: HomeViewModel,
+    modifier: Modifier = Modifier
+) {
 
-    val repository = remember {
-        val database = WeatherDatabase.getInstance(context)
-        val localDataSource = FavoritesLocalDataSource(database.favoriteLocationDao())
-        val remoteDataSource = WeatherRemoteDataSource()
-        WeatherRepository(remoteDataSource, localDataSource)
-    }
+    val navController = rememberNavController()
+
+    val app = LocalContext.current.applicationContext as WeatherApp
+    val settingsRepository = app.appContainer.settingsRepository
+    val repository = app.appContainer.weatherRepository
 
     val favoritesFactory = remember { FavoritesViewModelFactory(repository) }
     val addFavoriteFactory = remember { AddFavoriteViewModelFactory(repository) }
     val favoriteDetailsFactory = remember { FavoriteDetailsViewModelFactory(repository) }
+    val settingsFactory = remember { SettingsViewModelFactory(settingsRepository) }
 
     val favoritesViewModel: FavoritesViewModel = viewModel(factory = favoritesFactory)
     val addFavoriteViewModel: AddFavoriteViewModel = viewModel(factory = addFavoriteFactory)
     val favoriteDetailsViewModel: FavoriteDetailsViewModel = viewModel(factory = favoriteDetailsFactory)
+    val settingsViewModel: SettingsViewModel = viewModel(factory = settingsFactory)
+
 
     val favoritesUiState by favoritesViewModel.uiState.collectAsState()
     val addFavoriteUiState by addFavoriteViewModel.uiState.collectAsState()
@@ -167,7 +173,9 @@ fun WeatherAppRoot(uiState: HomeUiState, modifier: Modifier = Modifier) {
 
             composable<Screens.Settings> {
                 SettingsScreen(
-                    onBack = { navController.navigate(Screens.Home) { launchSingleTop = true } }
+                    viewModel = settingsViewModel,
+                    onBack = { navController.navigate(Screens.Home) { launchSingleTop = true } },
+                    onPickHomeLocation = { navController.navigate(Screens.PickHomeLocation) }
                 )
             }
 
@@ -177,6 +185,20 @@ fun WeatherAppRoot(uiState: HomeUiState, modifier: Modifier = Modifier) {
                     onSave = { navController.popBackStack() }
                 )
             }
+
+            composable<Screens.PickHomeLocation> {
+                PickHomeLocationScreen(
+                    viewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    onSavedGoHome = {
+                        navController.navigate(Screens.Home) {
+                            launchSingleTop = true
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                        }
+                    }
+                )
+            }
+
         }
     }
 }
