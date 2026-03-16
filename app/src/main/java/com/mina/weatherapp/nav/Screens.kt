@@ -1,4 +1,4 @@
-package com.mina.weatherapp.screens
+package com.mina.weatherapp.nav
 
 import kotlinx.serialization.Serializable
 

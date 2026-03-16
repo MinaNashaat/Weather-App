@@ -1,6 +1,5 @@
-package com.mina.weatherapp.screens
+package com.mina.weatherapp.presentation.home
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -21,12 +20,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -36,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,7 +44,6 @@ import androidx.compose.ui.unit.sp
 import com.mina.weatherapp.R
 import com.mina.weatherapp.data.weather.model.home.forecast.ForecastResponse
 import com.mina.weatherapp.data.weather.model.home.onecall.OneCallResponse
-import com.mina.weatherapp.presentation.home.HomeUiState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

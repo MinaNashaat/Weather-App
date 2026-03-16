@@ -1,6 +1,9 @@
 package com.mina.weatherapp
 
 import android.content.Context
+import com.mina.weatherapp.alertsmanager.AlertScheduler
+import com.mina.weatherapp.data.alerts.local.AlertsLocalDataSource
+import com.mina.weatherapp.data.alerts.AlertsRepository
 import com.mina.weatherapp.data.db.WeatherDatabase
 import com.mina.weatherapp.data.settings.SettingsSharedPrefrencesDataSource
 import com.mina.weatherapp.data.settings.SettingsRepository
@@ -21,6 +24,13 @@ class AppContainer(context: Context) {
             weatherRemoteDataSource = WeatherRemoteDataSource(),
             weatherLocalDataSource = FavoritesLocalDataSource(db.favoriteLocationDao()),
             settingsRepository = settingsRepository
+        )
+    }
+
+    val alertsRepository: AlertsRepository by lazy {
+        AlertsRepository(
+            local = AlertsLocalDataSource(db.alertDao()),
+            scheduler = AlertScheduler(context)
         )
     }
 }

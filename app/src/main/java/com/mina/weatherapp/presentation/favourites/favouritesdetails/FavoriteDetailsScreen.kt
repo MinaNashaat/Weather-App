@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.mina.weatherapp.presentation.home.HomeUiState
-import com.mina.weatherapp.screens.WeatherForecastScreen
+import com.mina.weatherapp.presentation.home.WeatherForecastScreen
 
 @Composable
 fun FavoriteDetailsScreen(uiState: FavoriteDetailsUiState) {

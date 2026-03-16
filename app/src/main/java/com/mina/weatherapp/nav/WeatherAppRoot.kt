@@ -17,6 +17,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mina.weatherapp.WeatherApp
+import com.mina.weatherapp.presentation.alerts.addalerts.AddAlertScreen
+import com.mina.weatherapp.presentation.alerts.alertsdetails.AlertsScreen
+import com.mina.weatherapp.presentation.alerts.addalerts.AddAlertViewModel
+import com.mina.weatherapp.presentation.alerts.addalerts.AddAlertViewModelFactory
+import com.mina.weatherapp.presentation.alerts.alertsdetails.AlertsViewModel
+import com.mina.weatherapp.presentation.alerts.alertsdetails.AlertsViewModelFactory
 import com.mina.weatherapp.presentation.favourites.favouritesdetails.FavoriteDetailsScreen
 import com.mina.weatherapp.presentation.favourites.addfavouritelocation.AddFavoriteViewModel
 import com.mina.weatherapp.presentation.favourites.addfavouritelocation.AddFavoriteViewModelFactory
@@ -28,11 +34,11 @@ import com.mina.weatherapp.presentation.favourites.favouriteslocations.Favorites
 import com.mina.weatherapp.presentation.favourites.favouriteslocations.FavoritesViewModelFactory
 import com.mina.weatherapp.presentation.home.HomeUiState
 import com.mina.weatherapp.presentation.home.HomeViewModel
+import com.mina.weatherapp.presentation.home.WeatherForecastScreen
 import com.mina.weatherapp.presentation.settings.PickHomeLocationScreen
 import com.mina.weatherapp.presentation.settings.SettingsScreen
 import com.mina.weatherapp.presentation.settings.SettingsViewModel
 import com.mina.weatherapp.presentation.settings.SettingsViewModelFactory
-import com.mina.weatherapp.screens.*
 
 @Composable
 fun WeatherAppRoot(
@@ -71,6 +77,17 @@ fun WeatherAppRoot(
     val isSettings = currentDestination?.hierarchy?.any { it.route == Screens.Settings::class.qualifiedName } == true
 
     val showBottomBar = isHome || isFavorites || isAlerts || isSettings
+
+
+    val alertsRepo = app.appContainer.alertsRepository
+    val alertsFactory = remember { AlertsViewModelFactory(alertsRepo) }
+    val addAlertFactory = remember { AddAlertViewModelFactory(alertsRepo) }
+
+    val alertsViewModel: AlertsViewModel = viewModel(factory = alertsFactory)
+    val addAlertViewModel: AddAlertViewModel = viewModel(factory = addAlertFactory)
+
+    val alertsUiState by alertsViewModel.uiState.collectAsState()
+
 
     BackHandler(enabled = showBottomBar && !isHome) {
         navController.navigate(Screens.Home) {
@@ -167,7 +184,29 @@ fun WeatherAppRoot(
 
             composable<Screens.Alerts> {
                 AlertsScreen(
-                    onAddAlert = { navController.navigate(Screens.AddAlert) }
+                    uiState = alertsUiState,
+                    onAddAlert = {
+                        addAlertViewModel.reset()
+                        navController.navigate(Screens.AddAlert)
+                    },
+                    onDelete = { alertsViewModel.delete(it) },
+                    onToggle = { alert, enabled -> alertsViewModel.toggle(alert, enabled) }
+                )
+            }
+
+            composable<Screens.AddAlert> {
+                val prefs = settingsRepository.settings.collectAsState().value
+                val lat = prefs.homeLat ?: 0.0
+                val lon = prefs.homeLon ?: 0.0
+
+                AddAlertScreen(
+                    viewModel = addAlertViewModel,
+                    homeLat = lat,
+                    homeLon = lon,
+                    onBack = { navController.popBackStack() },
+                    onSaved = {
+                        navController.popBackStack()
+                    }
                 )
             }
 
@@ -176,13 +215,6 @@ fun WeatherAppRoot(
                     viewModel = settingsViewModel,
                     onBack = { navController.navigate(Screens.Home) { launchSingleTop = true } },
                     onPickHomeLocation = { navController.navigate(Screens.PickHomeLocation) }
-                )
-            }
-
-            composable<Screens.AddAlert> {
-                AddAlertScreen(
-                    onBack = { navController.popBackStack() },
-                    onSave = { navController.popBackStack() }
                 )
             }
 
@@ -198,7 +230,6 @@ fun WeatherAppRoot(
                     }
                 )
             }
-
         }
     }
 }

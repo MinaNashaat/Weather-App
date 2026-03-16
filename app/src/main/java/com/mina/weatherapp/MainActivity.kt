@@ -6,12 +6,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +42,8 @@ class MainActivity : ComponentActivity() {
             settingsRepository = container.settingsRepository
         )
     }
+    private val requestNotifPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +62,11 @@ class MainActivity : ComponentActivity() {
     }
     override fun onStart() {
         super.onStart()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestNotifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+
 
         val source = (application as WeatherApp)
             .appContainer
