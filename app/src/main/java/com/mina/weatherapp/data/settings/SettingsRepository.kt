@@ -8,15 +8,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class SettingsRepository(
-    private val sharedPrefrenceDataSource: SettingsSharedPrefrencesDataSource
-) {
+    private val sharedPrefrenceDataSource: ISettingDataSource
+) : ISettingsRepository{
 
-    private lateinit var settingsPreferences: SettingsPreferences
+    private val _settings = MutableStateFlow(load())
+    val settings: StateFlow<SettingsPreferences> = _settings.asStateFlow()
 
-    init{
-        settingsPreferences = load()
-    }
-    private fun load(): SettingsPreferences {
+
+
+    override fun load(): SettingsPreferences {
 
         val source = if (sharedPrefrenceDataSource.getLocationSource().lowercase() == "map")
             LocationSource.MAP
@@ -38,27 +38,22 @@ class SettingsRepository(
         )
     }
 
-
-
-    private val _settings = MutableStateFlow(settingsPreferences)
-    val settings: StateFlow<SettingsPreferences> = _settings.asStateFlow()
-
-    fun saveLanguage(lang: String) {
+    override fun saveLanguage(lang: String) {
         sharedPrefrenceDataSource.saveLanguage(lang);
         _settings.value = _settings.value.copy(language = lang)
     }
 
-    fun saveLocationSource(source: LocationSource) {
+    override fun saveLocationSource(source: LocationSource) {
         sharedPrefrenceDataSource.saveLocationSource(source.name.lowercase())
         _settings.value = _settings.value.copy(locationSource = source)
     }
 
-    fun saveHomeLocation(lat: Double, lon: Double) {
+    override fun saveHomeLocation(lat: Double, lon: Double) {
         sharedPrefrenceDataSource.saveHomeLocation(lat, lon)
         _settings.value = _settings.value.copy(homeLat = lat, homeLon = lon)
     }
 
-    fun saveUnitsAndWind(units: String, wind: WindSpeedUnit) {
+    override fun saveUnitsAndWind(units: String, wind: WindSpeedUnit) {
         sharedPrefrenceDataSource.saveUnits(units)
         if (wind == WindSpeedUnit.MPH)
             sharedPrefrenceDataSource.saveWindSpeedUnit("mph")

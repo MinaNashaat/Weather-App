@@ -76,4 +76,20 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version")
 
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+
+
+    testImplementation("androidx.test:core-ktx:1.2.0")
+    testImplementation("org.robolectric:robolectric:4.16.1")
+    testImplementation("androidx.test.ext:junit-ktx:1.1.5")
+
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+//    testImplementation("app.cash.turbine:turbine:1.2.1")
+    //mockk
+    testImplementation("io.mockk:mockk:1.14.9")
+    androidTestImplementation("io.mockk:mockk-android:1.14.9")
+    androidTestImplementation("androidx.test:core-ktx:1.2.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    androidTestImplementation("androidx.arch.core:core-testing:2.2.0")
 }

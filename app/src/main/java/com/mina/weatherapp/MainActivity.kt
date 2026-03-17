@@ -23,7 +23,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.mina.weatherapp.data.settings.model.LocationSource
@@ -31,7 +30,6 @@ import com.mina.weatherapp.nav.WeatherAppRoot
 import com.mina.weatherapp.presentation.home.HomeViewModel
 import com.mina.weatherapp.presentation.home.WeatherViewModelFactory
 
-const val LOCATION_PERMISSION = 27
 class MainActivity : ComponentActivity() {
     private lateinit var locationState: MutableState<Location>
 
@@ -42,8 +40,33 @@ class MainActivity : ComponentActivity() {
             settingsRepository = container.settingsRepository
         )
     }
-    private val requestNotifPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        Log.d("minanashaat", "Permissions result received: $permissions")
+        val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: checkPermission()
+        
+        if (!locationGranted) {
+            finish()
+            return@registerForActivityResult
+        }
+
+        val source = (application as WeatherApp)
+            .appContainer
+            .settingsRepository
+            .settings
+            .value
+            .locationSource
+
+        if (source != LocationSource.MAP) {
+            if (isLocationEnabled()) {
+                getCurrentLocationOnce()
+            } else {
+                enableLocationService()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,20 +76,19 @@ class MainActivity : ComponentActivity() {
             val uiState = viewModel.uiState.collectAsState().value
 
             MaterialTheme(colorScheme = lightColorScheme()) {
-//                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    locationState = rememberSaveable{ mutableStateOf(Location("")) }
-                    WeatherAppRoot(uiState, viewModel, Modifier.fillMaxSize())
-//                }
+                locationState = rememberSaveable { mutableStateOf(Location("")) }
+                WeatherAppRoot(uiState, viewModel, Modifier.fillMaxSize())
             }
         }
     }
+
     override fun onStart() {
         super.onStart()
 
+        val permissionsToRequest = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestNotifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-
 
         val source = (application as WeatherApp)
             .appContainer
@@ -77,50 +99,37 @@ class MainActivity : ComponentActivity() {
 
         if (source == LocationSource.MAP) {
             viewModel.refresh()
+            requestPermissionsIfNeeded(permissionsToRequest)
             return
         }
 
-        if(checkPermission()){
-            if(isLocationEnabled()){
+        if (checkPermission()) {
+            if (isLocationEnabled()) {
                 getCurrentLocationOnce()
-            }
-            else{
+            } else {
                 enableLocationService()
             }
-        }
-        else{
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_PERMISSION
-            )
+            requestPermissionsIfNeeded(permissionsToRequest)
+        } else {
+            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
         }
     }
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        Log.d("minanashaat" , "i am in onRequestPermissionsResult without deviceId")
-        if(requestCode == LOCATION_PERMISSION){
-            if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                if(isLocationEnabled()){
-                    getCurrentLocationOnce()
-                }
-                else{
-                    enableLocationService()
-                }
-            }
+
+    private fun requestPermissionsIfNeeded(permissions: List<String>) {
+        val notGranted = permissions.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        if (notGranted.isNotEmpty()) {
+            requestPermissionLauncher.launch(permissions.toTypedArray())
         }
     }
 
     fun checkPermission() = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    fun isLocationEnabled() : Boolean{
-        val locationManager : LocationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+    
+    fun isLocationEnabled(): Boolean {
+        val locationManager: LocationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
     }
-    fun enableLocationService(){
+    
+    fun enableLocationService() {
         val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
         startActivity(intent)
     }
