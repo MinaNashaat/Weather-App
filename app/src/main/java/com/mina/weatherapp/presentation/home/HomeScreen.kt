@@ -112,7 +112,7 @@ fun WeatherForecastScreen(uiState: HomeUiState, modifier: Modifier = Modifier) {
                         HeroSection(
                             temperature = "${homeData.oneCallResponse.current.temp.toInt()}°",
                             status = homeData.oneCallResponse.current.weather.firstOrNull()?.description ?: "",
-                            location = "Current Location",
+                            location = homeData.forecastResponse.city.name,
                             dateTime = Date(uiState.data.oneCallResponse.current.dt * 1000).toString()
                         )
                     }

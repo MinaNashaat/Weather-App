@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Weather App</string>
+    <string name="app_name">Clima Cast</string>
     <string name="title_activity_home">HomeActivity</string>
 </resources>
